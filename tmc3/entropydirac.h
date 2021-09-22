@@ -35,7 +35,7 @@
 
 #pragma once
 
-#include "dependencies/schroedinger/schroarith.h"
+#include "schroarith.h"
 #include "entropychunk.h"
 
 #include <algorithm>

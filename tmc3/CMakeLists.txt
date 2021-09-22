@@ -67,6 +67,7 @@ file(GLOB PROJECT_INC_FILES
   "DualLutCoder.h"
   "FixedPoint.h"
   "OctreeNeighMap.h"
+  "PayloadBuffer.h"
   "PCCKdTree.h"
   "PCCMath.h"
   "PCCMisc.h"
@@ -76,6 +77,7 @@ file(GLOB PROJECT_INC_FILES
   "PCCTMC3Encoder.h"
   "RAHT.h"
   "TMC3.h"
+  "${PROJECT_BINARY_DIR}/tmc3/TMC3Config.h"
   "attribute_raw.h"
   "colourspace.h"
   "coordinate_conversion.h"
@@ -159,23 +161,24 @@ include_directories(
   "${CMAKE_CURRENT_SOURCE_DIR}"
   "${CMAKE_CURRENT_SOURCE_DIR}/../dependencies/nanoflann"
   "${CMAKE_CURRENT_SOURCE_DIR}/../dependencies/program-options-lite"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../dependencies/schroedinger"
 )
 
-add_executable (tmc3
-  ${PROJECT_CPP_FILES}
-  ${PROJECT_INC_FILES}
-  ${PROJECT_IN_FILES}
-  ${VERSION_FILE}
-)
-add_dependencies(tmc3 genversion)
 
-add_executable (ply-merge EXCLUDE_FROM_ALL
-  "../tools/ply-merge.cpp"
-  "misc.cpp"
-  "ply.cpp"
-  "../dependencies/program-options-lite/program_options_lite.cpp"
-  ${VERSION_FILE}
-)
-add_dependencies(ply-merge genversion)
+set(CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE ON) 
+add_library(tmc3 SHARED ${PROJECT_CPP_FILES} ${PROJECT_INC_FILES} ${PROJECT_IN_FILES} ${VERSION_FILE})
 
-install (TARGETS tmc3 DESTINATION bin)
+set_target_properties(tmc3 PROPERTIES
+  PUBLIC_HEADER "${PROJECT_INC_FILES}"
+)
+
+install(TARGETS       tmc3
+        EXPORT        tmc3-export
+        LIBRARY       DESTINATION lib
+        INCLUDES      DESTINATION include
+        PUBLIC_HEADER DESTINATION include/tmc3)
+
+install(EXPORT        tmc3-export
+        FILE          tmc3-config.cmake
+        DESTINATION   share/cmake/tmc3
+        EXPORT_LINK_INTERFACE_LIBRARIES)
