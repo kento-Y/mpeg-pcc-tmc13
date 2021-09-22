@@ -1,5 +1,23 @@
 # TMC13
 
+This repository has been modified from the original source with some changes to be able to use TMC3 as a library.
+
+## install
+```
+mkdir build
+cd build
+cmake ..
+make
+sudo make install
+```
+
+## Usage
+```
+#include <tmc3/TMC3.h>
+#include <tmc/PCCTMC3Encoder.h>
+...
+```
+
 ## Building
 
 ### OSX
