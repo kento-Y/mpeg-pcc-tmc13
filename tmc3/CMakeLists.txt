@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.0)
 enable_language(C)
 
+set(CMAKE_CXX_FLAGS "-O0 -g")
+
 if (UNIX)
   add_definitions(-D_POSIX_C_SOURCE=200809L)
 elseif (WIN32)

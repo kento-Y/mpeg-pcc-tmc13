@@ -129,13 +129,13 @@ ply::write(
     fout << "property uchar red" << std::endl;
   }
   if (cloud.hasReflectances()) {
-    fout << "property uint16 refc" << std::endl;
+    fout << "property uint8 intensity" << std::endl;
   }
   if (cloud.hasFrameIndex()) {
     fout << "property uint8 frameindex" << std::endl;
   }
-  fout << "element face 0" << std::endl;
-  fout << "property list uint8 int32 vertex_index" << std::endl;
+  // fout << "element face 0" << std::endl;
+  // fout << "property list uint8 int32 vertex_index" << std::endl;
   fout << "end_header" << std::endl;
   if (asAscii) {
     //      fout << std::setprecision(std::numeric_limits<double>::max_digits10);
@@ -346,8 +346,8 @@ ply::read(
     } else if (attributeInfo.name == "blue" && attributeInfo.byteCount == 1) {
       indexB = a;
     } else if (
-      (attributeInfo.name == "reflectance" || attributeInfo.name == "refc")
-      && attributeInfo.byteCount <= 2) {
+      (attributeInfo.name == "reflectance" || attributeInfo.name == "refc" || attributeInfo.name == "intensity")
+      && attributeInfo.byteCount <= 4) {
       indexReflectance = a;
     } else if (
       attributeInfo.name == "frameindex" && attributeInfo.byteCount <= 2) {
