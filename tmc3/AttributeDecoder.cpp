@@ -339,40 +339,86 @@ AttributeDecoder::decodeReflectancesPred(
   computeQuantizationWeights(
     _lods.predictors, quantWeights, aps.quant_neigh_weight);
 
-  for (size_t predictorIndex = 0; predictorIndex < pointCount;
-       ++predictorIndex) {
-    if (predictorIndex == _lods.numPointsInLod[quantLayer]) {
-      quantLayer = std::min(int(qpSet.layers.size()) - 1, quantLayer + 1);
+  switch (desc.attributeLabel.known_attribute_label)
+  {
+  case KnownAttributeLabel::kReflectance:
+    // reflectance
+    for (size_t predictorIndex = 0; predictorIndex < pointCount;
+        ++predictorIndex) {
+      if (predictorIndex == _lods.numPointsInLod[quantLayer]) {
+        quantLayer = std::min(int(qpSet.layers.size()) - 1, quantLayer + 1);
+      }
+      const uint32_t pointIndex = _lods.indexes[predictorIndex];
+      auto quant = qpSet.quantizers(pointCloud[pointIndex], quantLayer);
+      auto& predictor = _lods.predictors[predictorIndex];
+      predictor.predMode = 0;
+
+      if (--zeroRunRem < 0)
+        zeroRunRem = decoder.decodeRunLength();
+
+      int32_t attValue0 = 0;
+      if (!zeroRunRem)
+        attValue0 = decoder.decode();
+
+      if (predModeEligibleRefl(desc, aps, pointCloud, _lods.indexes, predictor))
+        decodePredModeRefl(aps, attValue0, predictor);
+
+      attr_t& reflectance = pointCloud.getReflectance(pointIndex);
+      const int64_t quantPredAttValue =
+        predictor.predictReflectance(pointCloud, _lods.indexes);
+
+      int64_t qStep = quant[0].stepSize();
+      int64_t weight =
+        std::min(quantWeights[predictorIndex], qStep) >> kFixedPointWeightShift;
+      int64_t delta =
+        divExp2RoundHalfUp(quant[0].scale(attValue0), kFixedPointAttributeShift);
+      delta /= weight;
+
+      const int64_t reconstructedQuantAttValue = quantPredAttValue + delta;
+      reflectance =
+        attr_t(PCCClip(reconstructedQuantAttValue, int64_t(0), maxReflectance));
     }
-    const uint32_t pointIndex = _lods.indexes[predictorIndex];
-    auto quant = qpSet.quantizers(pointCloud[pointIndex], quantLayer);
-    auto& predictor = _lods.predictors[predictorIndex];
-    predictor.predMode = 0;
+    break;
+  case KnownAttributeLabel::kRingNumber:
+    // ring
+    for (size_t predictorIndex = 0; predictorIndex < pointCount;
+        ++predictorIndex) {
+      if (predictorIndex == _lods.numPointsInLod[quantLayer]) {
+        quantLayer = std::min(int(qpSet.layers.size()) - 1, quantLayer + 1);
+      }
+      const uint32_t pointIndex = _lods.indexes[predictorIndex];
+      auto quant = qpSet.quantizers(pointCloud[pointIndex], quantLayer);
+      auto& predictor = _lods.predictors[predictorIndex];
+      predictor.predMode = 0;
 
-    if (--zeroRunRem < 0)
-      zeroRunRem = decoder.decodeRunLength();
+      if (--zeroRunRem < 0)
+        zeroRunRem = decoder.decodeRunLength();
 
-    int32_t attValue0 = 0;
-    if (!zeroRunRem)
-      attValue0 = decoder.decode();
+      int32_t attValue0 = 0;
+      if (!zeroRunRem)
+        attValue0 = decoder.decode();
 
-    if (predModeEligibleRefl(desc, aps, pointCloud, _lods.indexes, predictor))
-      decodePredModeRefl(aps, attValue0, predictor);
+      if (predModeEligibleRefl(desc, aps, pointCloud, _lods.indexes, predictor))
+        decodePredModeRefl(aps, attValue0, predictor);
 
-    attr_t& reflectance = pointCloud.getReflectance(pointIndex);
-    const int64_t quantPredAttValue =
-      predictor.predictReflectance(pointCloud, _lods.indexes);
+      attr_t ring = pointCloud.getLaserAngle(pointIndex);
+      const int64_t quantPredAttValue =
+        predictor.predictRing(pointCloud, _lods.indexes);
 
-    int64_t qStep = quant[0].stepSize();
-    int64_t weight =
-      std::min(quantWeights[predictorIndex], qStep) >> kFixedPointWeightShift;
-    int64_t delta =
-      divExp2RoundHalfUp(quant[0].scale(attValue0), kFixedPointAttributeShift);
-    delta /= weight;
+      int64_t qStep = quant[0].stepSize();
+      int64_t weight =
+        std::min(quantWeights[predictorIndex], qStep) >> kFixedPointWeightShift;
+      int64_t delta =
+        divExp2RoundHalfUp(quant[0].scale(attValue0), kFixedPointAttributeShift);
+      delta /= weight;
 
-    const int64_t reconstructedQuantAttValue = quantPredAttValue + delta;
-    reflectance =
-      attr_t(PCCClip(reconstructedQuantAttValue, int64_t(0), maxReflectance));
+      const int64_t reconstructedQuantAttValue = quantPredAttValue + delta;
+      ring =
+        attr_t(PCCClip(reconstructedQuantAttValue, int64_t(0), maxReflectance));
+    }
+    break;
+  default:
+    break;
   }
 }
 

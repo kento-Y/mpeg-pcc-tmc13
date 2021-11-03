@@ -365,8 +365,18 @@ PCCTMC3Decoder3::decodeGeometryBrick(const PayloadBuffer& buf)
       return desc.attributeLabel == KnownAttributeLabel::kReflectance;
     });
 
+  bool hasLaserAngles = std::any_of(
+    _sps->attributeSets.begin(), _sps->attributeSets.end(),
+    [](const AttributeDescription& desc) {
+      return desc.attributeLabel == KnownAttributeLabel::kRingNumber;
+    });
+
   _currentPointCloud.clear();
   _currentPointCloud.addRemoveAttributes(hasColour, hasReflectance);
+  if (hasLaserAngles)
+    _currentPointCloud.addLaserAngles();
+  else
+    _currentPointCloud.removeLaserAngles();
 
   pcc::chrono::Stopwatch<pcc::chrono::utime_inc_children_clock> clock_user;
   clock_user.start();
@@ -602,6 +612,12 @@ PCCTMC3Decoder3::decodeConstantAttribute(const PayloadBuffer& buf)
     attr_t defAttrVal = attrDesc.params.attr_default_value[0];
     for (int i = 0; i < _currentPointCloud.getPointCount(); i++)
       _currentPointCloud.setReflectance(i, defAttrVal);
+  }
+
+  if (label == KnownAttributeLabel::kRingNumber) {
+    attr_t defAttrVal = attrDesc.params.attr_default_value[0];
+    for (int i = 0; i < _currentPointCloud.getPointCount(); i++)
+      _currentPointCloud.setLaserAngle(i, defAttrVal);
   }
 }
 
