@@ -670,58 +670,122 @@ AttributeEncoder::encodeReflectancesPred(
   computeQuantizationWeights(
     _lods.predictors, quantWeights, aps.quant_neigh_weight);
 
-  for (size_t predictorIndex = 0; predictorIndex < pointCount;
-       ++predictorIndex) {
-    if (predictorIndex == _lods.numPointsInLod[quantLayer]) {
-      quantLayer = std::min(int(qpSet.layers.size()) - 1, quantLayer + 1);
+  switch (desc.attributeLabel.known_attribute_label) {
+  case KnownAttributeLabel::kReflectance:
+    // reflectance
+    for (size_t predictorIndex = 0; predictorIndex < pointCount;
+         ++predictorIndex) {
+      if (predictorIndex == _lods.numPointsInLod[quantLayer]) {
+        quantLayer = std::min(int(qpSet.layers.size()) - 1, quantLayer + 1);
+      }
+      const uint32_t pointIndex = _lods.indexes[predictorIndex];
+      auto quant = qpSet.quantizers(pointCloud[pointIndex], quantLayer);
+      auto& predictor = _lods.predictors[predictorIndex];
+      predictor.predMode = 0;
+
+      bool predModeEligible =
+        predModeEligibleRefl(desc, aps, pointCloud, _lods.indexes, predictor);
+      if (predModeEligible)
+        decidePredModeRefl(
+          desc, aps, pointCloud, _lods.indexes, predictorIndex, predictor,
+          encoder, context, quant[0]);
+
+      const uint64_t reflectance = pointCloud.getReflectance(pointIndex);
+      const attr_t predictedReflectance =
+        predictor.predictReflectance(pointCloud, _lods.indexes);
+      const int64_t quantAttValue = reflectance;
+      const int64_t quantPredAttValue = predictedReflectance;
+
+      int64_t qStep = quant[0].stepSize();
+      int64_t weight = std::min(quantWeights[predictorIndex], qStep)
+        >> kFixedPointWeightShift;
+      const int64_t delta = quant[0].quantize(
+        ((quantAttValue - quantPredAttValue) * weight)
+        << kFixedPointAttributeShift);
+      int32_t attValue0 = delta;
+      int64_t reconstructedDelta =
+        divExp2RoundHalfUp(quant[0].scale(delta), kFixedPointAttributeShift);
+      reconstructedDelta /= weight;
+
+      if (predModeEligible)
+        encodePredModeRefl(aps, predictor.predMode, attValue0);
+
+      const int64_t reconstructedQuantAttValue =
+        quantPredAttValue + reconstructedDelta;
+      const attr_t reconstructedReflectance =
+        attr_t(PCCClip(reconstructedQuantAttValue, int64_t(0), clipMax));
+
+      if (!attValue0)
+        ++zeroRunAcc;
+      else {
+        zerorun.push_back(zeroRunAcc);
+        zeroRunAcc = 0;
+      }
+      residual[predictorIndex] = attValue0;
+      pointCloud.setReflectance(pointIndex, reconstructedReflectance);
+      encoder.resStatUpdateRefl(attValue0);
     }
-    const uint32_t pointIndex = _lods.indexes[predictorIndex];
-    auto quant = qpSet.quantizers(pointCloud[pointIndex], quantLayer);
-    auto& predictor = _lods.predictors[predictorIndex];
-    predictor.predMode = 0;
+    break;
 
-    bool predModeEligible =
-      predModeEligibleRefl(desc, aps, pointCloud, _lods.indexes, predictor);
-    if (predModeEligible)
-      decidePredModeRefl(
-        desc, aps, pointCloud, _lods.indexes, predictorIndex, predictor,
-        encoder, context, quant[0]);
+  case KnownAttributeLabel::kRingNumber:
+    // ring
+    for (size_t predictorIndex = 0; predictorIndex < pointCount;
+         ++predictorIndex) {
+      if (predictorIndex == _lods.numPointsInLod[quantLayer]) {
+        quantLayer = std::min(int(qpSet.layers.size()) - 1, quantLayer + 1);
+      }
+      const uint32_t pointIndex = _lods.indexes[predictorIndex];
+      auto quant = qpSet.quantizers(pointCloud[pointIndex], quantLayer);
+      auto& predictor = _lods.predictors[predictorIndex];
+      predictor.predMode = 0;
 
-    const uint64_t reflectance = pointCloud.getReflectance(pointIndex);
-    const attr_t predictedReflectance =
-      predictor.predictReflectance(pointCloud, _lods.indexes);
-    const int64_t quantAttValue = reflectance;
-    const int64_t quantPredAttValue = predictedReflectance;
+      bool predModeEligible =
+        predModeEligibleRefl(desc, aps, pointCloud, _lods.indexes, predictor);
+      if (predModeEligible)
+        decidePredModeRefl(
+          desc, aps, pointCloud, _lods.indexes, predictorIndex, predictor,
+          encoder, context, quant[0]);
 
-    int64_t qStep = quant[0].stepSize();
-    int64_t weight =
-      std::min(quantWeights[predictorIndex], qStep) >> kFixedPointWeightShift;
-    const int64_t delta = quant[0].quantize(
-      ((quantAttValue - quantPredAttValue) * weight)
-      << kFixedPointAttributeShift);
-    int32_t attValue0 = delta;
-    int64_t reconstructedDelta =
-      divExp2RoundHalfUp(quant[0].scale(delta), kFixedPointAttributeShift);
-    reconstructedDelta /= weight;
+      const uint64_t ring = pointCloud.getLaserAngle(pointIndex);
+      const attr_t predictedRing =
+        predictor.predictRing(pointCloud, _lods.indexes);
+      const int64_t quantAttValue = ring;
+      const int64_t quantPredAttValue = predictedRing;
 
-    if (predModeEligible)
-      encodePredModeRefl(aps, predictor.predMode, attValue0);
+      int64_t qStep = quant[0].stepSize();
+      int64_t weight = std::min(quantWeights[predictorIndex], qStep)
+        >> kFixedPointWeightShift;
+      const int64_t delta = quant[0].quantize(
+        ((quantAttValue - quantPredAttValue) * weight)
+        << kFixedPointAttributeShift);
+      int32_t attValue0 = delta;
+      int64_t reconstructedDelta =
+        divExp2RoundHalfUp(quant[0].scale(delta), kFixedPointAttributeShift);
+      reconstructedDelta /= weight;
 
-    const int64_t reconstructedQuantAttValue =
-      quantPredAttValue + reconstructedDelta;
-    const attr_t reconstructedReflectance =
-      attr_t(PCCClip(reconstructedQuantAttValue, int64_t(0), clipMax));
+      if (predModeEligible)
+        encodePredModeRefl(aps, predictor.predMode, attValue0);
 
-    if (!attValue0)
-      ++zeroRunAcc;
-    else {
-      zerorun.push_back(zeroRunAcc);
-      zeroRunAcc = 0;
+      const int64_t reconstructedQuantAttValue =
+        quantPredAttValue + reconstructedDelta;
+      const attr_t reconstructedRing =
+        attr_t(PCCClip(reconstructedQuantAttValue, int64_t(0), clipMax));
+
+      if (!attValue0)
+        ++zeroRunAcc;
+      else {
+        zerorun.push_back(zeroRunAcc);
+        zeroRunAcc = 0;
+      }
+      residual[predictorIndex] = attValue0;
+      pointCloud.setLaserAngle(pointIndex, reconstructedRing);
+      encoder.resStatUpdateRefl(attValue0);
     }
-    residual[predictorIndex] = attValue0;
-    pointCloud.setReflectance(pointIndex, reconstructedReflectance);
-    encoder.resStatUpdateRefl(attValue0);
+    break;
+
+  default: break;
   }
+
   if (zeroRunAcc)
     zerorun.push_back(zeroRunAcc);
 
@@ -1120,8 +1184,8 @@ AttributeEncoder::encodeReflectancesTransformRaht(
     pointQpOffsets[n] = qpSet.regionQpOffset(pointCloud[packedVoxel[n].index]);
   }
 
-  const int rahtPredThreshold[2] = {aps.raht_prediction_threshold0,
-                                    aps.raht_prediction_threshold1};
+  const int rahtPredThreshold[2] = {
+    aps.raht_prediction_threshold0, aps.raht_prediction_threshold1};
 
   // Transform.
   regionAdaptiveHierarchicalTransform(
@@ -1189,8 +1253,8 @@ AttributeEncoder::encodeColorsTransformRaht(
     pointQpOffsets[n] = qpSet.regionQpOffset(pointCloud[packedVoxel[n].index]);
   }
 
-  const int rahtPredThreshold[2] = {aps.raht_prediction_threshold0,
-                                    aps.raht_prediction_threshold1};
+  const int rahtPredThreshold[2] = {
+    aps.raht_prediction_threshold0, aps.raht_prediction_threshold1};
 
   // Transform.
   regionAdaptiveHierarchicalTransform(

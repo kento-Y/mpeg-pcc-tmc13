@@ -1089,29 +1089,32 @@ ParseParameters(int argc, char* argv[], Parameters& params)
   if (err.is_errored)
     return false;
 
-  // Dump the complete derived configuration
-  cout << "+ Effective configuration parameters\n";
-
-  po::dumpCfg(cout, opts, "General", 4);
-  if (params.isDecoder) {
-    po::dumpCfg(cout, opts, "Decoder", 4);
+  if (params.compressedStreamPath == "/dev/null") {
+    cout << "Successful parse parameters" << endl;;
   } else {
-    po::dumpCfg(cout, opts, "Coordinate system scaling", 4);
-    po::dumpCfg(cout, opts, "Encoder", 4);
-    po::dumpCfg(cout, opts, "Geometry", 4);
-    po::dumpCfg(cout, opts, "Recolouring", 4);
+    // Dump the complete derived configuration
+    cout << "+ Effective configuration parameters\n";
 
-    for (const auto& it : params.encoder.attributeIdxMap) {
-      // NB: when dumping the config, opts references params_attr
-      params_attr.desc = params.encoder.sps.attributeSets[it.second];
-      params_attr.aps = params.encoder.aps[it.second];
-      params_attr.encoder = params.encoder.attr[it.second];
-      cout << "    " << it.first << "\n";
-      po::dumpCfg(cout, opts, "Attributes", 8);
+    po::dumpCfg(cout, opts, "General", 4);
+    if (params.isDecoder) {
+      po::dumpCfg(cout, opts, "Decoder", 4);
+    } else {
+      po::dumpCfg(cout, opts, "Coordinate system scaling", 4);
+      po::dumpCfg(cout, opts, "Encoder", 4);
+      po::dumpCfg(cout, opts, "Geometry", 4);
+      po::dumpCfg(cout, opts, "Recolouring", 4);
+
+      for (const auto& it : params.encoder.attributeIdxMap) {
+        // NB: when dumping the config, opts references params_attr
+        params_attr.desc = params.encoder.sps.attributeSets[it.second];
+        params_attr.aps = params.encoder.aps[it.second];
+        params_attr.encoder = params.encoder.attr[it.second];
+        cout << "    " << it.first << "\n";
+        po::dumpCfg(cout, opts, "Attributes", 8);
+      }
     }
+    cout << endl;
   }
-
-  cout << endl;
 
   return true;
 }
@@ -1254,6 +1257,17 @@ sanitizeEncoderOpts(
       attrMeta.cicp_matrix_coefficients_idx = ColourMatrix::kUnspecified;
       attr_sps.attr_num_dimensions_minus1 = 0;
       attr_sps.attributeLabel = KnownAttributeLabel::kReflectance;
+    }
+
+    if (it.first == "ring") {
+      // Avoid wasting bits signalling chroma quant step size for reflectance
+      attr_aps.aps_chroma_qp_offset = 0;
+      attr_enc.abh.attr_layer_qp_delta_chroma.clear();
+
+      // There is no matrix for reflectace
+      attrMeta.cicp_matrix_coefficients_idx = ColourMatrix::kUnspecified;
+      attr_sps.attr_num_dimensions_minus1 = 0;
+      attr_sps.attributeLabel = KnownAttributeLabel::kRingNumber;
     }
 
     if (it.first == "color") {
@@ -1563,6 +1577,11 @@ int SequenceEncoder::compressOneFrame(Stopwatch* clock)
     pointCloud.removeReflectances();
   assert(codeReflectance == pointCloud.hasReflectances());
 
+  bool codeRingNumber = params->encoder.attributeIdxMap.count("ring");
+  if (!codeRingNumber)
+    pointCloud.removeLaserAngles();
+  assert(codeRingNumber == pointCloud.hasLaserAngles());
+
   clock->start();
 
   if (params->convertColourspace)
@@ -1821,6 +1840,19 @@ findReflAttrDesc(const std::vector<AttributeDescription>& attrDescs)
   return nullptr;
 }
 
+//============================================================================
+
+const AttributeDescription*
+findRingAttrDesc(const std::vector<AttributeDescription>& attrDescs)
+{
+  // todo(df): don't assume that there is only one in the sps
+  for (const auto& desc : attrDescs) {
+    if (desc.attributeLabel == KnownAttributeLabel::kRingNumber)
+      return &desc;
+  }
+  return nullptr;
+}
+
 //----------------------------------------------------------------------------
 
 struct AttrFwdScaler {
@@ -1853,21 +1885,34 @@ scaleAttributes(
   Op scaler)
 {
   // todo(df): extend this to other attributes
-  const AttributeDescription* attrDesc = findReflAttrDesc(attrDescs);
-  if (!attrDesc || !attrDesc->params.scalingParametersPresent)
+  const AttributeDescription* attrDescRefl = findReflAttrDesc(attrDescs);
+  if (!attrDescRefl || !attrDescRefl->params.scalingParametersPresent)
     return;
 
-  auto& params = attrDesc->params;
+  auto& paramsRefl = attrDescRefl->params;
 
   // Parameters present, but nothing to do
-  bool unityScale = !params.attr_scale_minus1 && !params.attr_frac_bits;
-  if (unityScale && !params.attr_offset)
+  bool unityScaleRefl = !paramsRefl.attr_scale_minus1 && !paramsRefl.attr_frac_bits;
+  if (unityScaleRefl && !paramsRefl.attr_offset)
+    return;
+
+  const AttributeDescription* attrDescRing = findRingAttrDesc(attrDescs);
+  if (!attrDescRing || !attrDescRing->params.scalingParametersPresent)
+    return;
+
+  auto& paramsRing = attrDescRing->params;
+
+  // Parameters present, but nothing to do
+  bool unityScaleRing = !paramsRing.attr_scale_minus1 && !paramsRing.attr_frac_bits;
+  if (unityScaleRing && !paramsRing.attr_offset)
     return;
 
   const auto pointCount = cloud.getPointCount();
   for (size_t i = 0; i < pointCount; ++i) {
     auto& val = cloud.getReflectance(i);
-    val = scaler(params, val);
+    val = scaler(paramsRefl, val);
+    auto& valRing = cloud.getLaserAngle(i);
+    valRing = scaler(paramsRing, valRing);
   }
 }
 

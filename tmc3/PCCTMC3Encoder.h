@@ -38,6 +38,7 @@
 #include <functional>
 #include <map>
 #include <string>
+#include <sstream>
 #include <vector>
 
 #include "Attribute.h"
@@ -169,6 +170,8 @@ public:
 
   static void deriveParameterSets(EncoderParams* params);
   static void fixupParameterSets(EncoderParams* params);
+
+  std::ostringstream bytestream;
 
 private:
   void appendSlice(PCCPointSet3& cloud);

@@ -256,6 +256,26 @@ struct PCCPredictor {
     return predicted;
   }
 
+  int64_t predictRing(
+    const PCCPointSet3& pointCloud, const std::vector<uint32_t>& indexes) const
+  {
+    int64_t predicted(0);
+    if (predMode > neighborCount) {
+      /* nop */
+    } else if (predMode > 0) {
+      predicted = pointCloud.getLaserAngle(
+        indexes[neighbors[predMode - 1].predictorIndex]);
+    } else {
+      for (size_t i = 0; i < neighborCount; ++i) {
+        predicted += neighbors[i].weight
+          * pointCloud.getLaserAngle(indexes[neighbors[i].predictorIndex]);
+      }
+      predicted = divExp2RoundHalfInf(predicted, kFixedPointWeightShift);
+    }
+    return predicted;
+  }
+
+
   void computeWeights()
   {
     const uint32_t shift = (1 << kFixedPointWeightShift);

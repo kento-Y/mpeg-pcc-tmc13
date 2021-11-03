@@ -123,6 +123,9 @@ PCCTMC3Encoder3::compress(
     if (!bboxSizeDefined)
       params->sps.seqBoundingBoxSize = (1 << 21) - 1;
 
+    // std::cout << "BBoxOrigin: " << params->sps.seqBoundingBoxOrigin << std::endl;
+    // std::cout << "BBoxSize: " << params->sps.seqBoundingBoxSize << std::endl;
+
     // Then scale the bounding box to match the reconstructed output
     for (int k = 0; k < 3; k++) {
       auto min_k = bbox.min[k];
@@ -283,7 +286,7 @@ PCCTMC3Encoder3::compress(
   if (partitions.tileInventory.tiles.size() > 1) {
     auto& inventory = partitions.tileInventory;
     assert(inventory.tiles.size() == tileMaps.size());
-    std::cout << "Tile number: " << tileMaps.size() << std::endl;
+    // std::cout << "Tile number: " << tileMaps.size() << std::endl;
     inventory.ti_seq_parameter_set_id = _sps->sps_seq_parameter_set_id;
     inventory.ti_origin_bits_minus1 =
       numBits(inventory.origin.abs().max()) - 1;
@@ -397,7 +400,12 @@ PCCTMC3Encoder3::compress(
     _tileId = partition.tileId;
     _sliceOrigin = sliceCloud.computeBoundingBox().min;
     compressPartition(sliceCloud, sliceSrcCloud, params, callback, reconCloud);
+    // std::cout << "Tile Origin: " << partitions.tileInventory.origin << std::endl;
+    // std::cout << "Slice Origin: " << _sliceOrigin << std::endl;
   }
+
+  // std::cout << "Frame: " << _frameCounter << std::endl << std::endl;
+
 
   // Apply global scaling to reconstructed point cloud
   if (reconCloud)
@@ -617,8 +625,8 @@ PCCTMC3Encoder3::compressPartition(
     clock_user.stop();
 
     double bpp = double(8 * payload.size()) / inputPointCloud.getPointCount();
-    // std::cout << "positions bitstream size " << payload.size() << " B (" << bpp
-    //           << " bpp)\n";
+    std::cout << "positions bitstream size " << payload.size() << " B (" << bpp
+              << " bpp)\n";
 
     auto total_user = std::chrono::duration_cast<std::chrono::milliseconds>(
       clock_user.count());

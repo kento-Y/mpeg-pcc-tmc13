@@ -84,6 +84,16 @@ namespace ply {
     double positionScale,
     PCCPointSet3& cloud);
 
+  ///
+  // Load @a pointCloud to a PLY file called @a fileName.
+  // Point positions are scaled by positionScale and converted to integers.
+  //
+  bool load(
+    const std::string& fileName,
+    const PropertyNameMap& propertyNames,
+    double positionScale,
+    PCCPointSet3& cloud);
+
   //============================================================================
 
 }  // namespace ply
