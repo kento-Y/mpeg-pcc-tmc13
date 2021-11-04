@@ -372,11 +372,7 @@ PCCTMC3Decoder3::decodeGeometryBrick(const PayloadBuffer& buf)
     });
 
   _currentPointCloud.clear();
-  _currentPointCloud.addRemoveAttributes(hasColour, hasReflectance);
-  if (hasLaserAngles)
-    _currentPointCloud.addLaserAngles();
-  else
-    _currentPointCloud.removeLaserAngles();
+  _currentPointCloud.addRemoveAttributes(hasColour, hasReflectance, hasLaserAngles);
 
   pcc::chrono::Stopwatch<pcc::chrono::utime_inc_children_clock> clock_user;
   clock_user.start();

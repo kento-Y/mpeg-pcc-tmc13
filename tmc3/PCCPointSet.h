@@ -403,11 +403,40 @@ public:
       removeReflectances();
   }
 
+  void addRemoveAttributes(bool withColors, bool withReflectances, bool withLaserAngles)
+  {
+    if (withColors)
+      addColors();
+    else
+      removeColors();
+
+    if (withReflectances)
+      addReflectances();
+    else
+      removeReflectances();
+
+    if (withLaserAngles)
+      addLaserAngles();
+    else
+      removeLaserAngles();
+  }
+
   void addRemoveAttributes(const PCCPointSet3& ref)
   {
-    ref.hasColors() ? addColors() : removeColors();
-    ref.hasReflectances() ? addReflectances() : removeReflectances();
-    ref.hasLaserAngles() ? addLaserAngles() : removeLaserAngles();
+    if (ref.hasColors())
+      addColors();
+    else
+      removeColors();
+
+    if (ref.hasReflectances())
+      addReflectances();
+    else
+      removeReflectances();
+
+    if (ref.hasLaserAngles())
+      addLaserAngles();
+    else
+      removeLaserAngles();
   }
 
   size_t getPointCount() const { return positions.size(); }

@@ -1974,7 +1974,7 @@ encodeGeometryOctree(
   // otherwise would.
   PCCPointSet3 pointCloud2;
   pointCloud2.addRemoveAttributes(
-    pointCloud.hasColors(), pointCloud.hasReflectances());
+    pointCloud.hasColors(), pointCloud.hasReflectances(), pointCloud.hasLaserAngles());
 
   if (pointCloud.hasLaserAngles())
     pointCloud2.addLaserAngles();

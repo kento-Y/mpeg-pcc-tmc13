@@ -390,16 +390,11 @@ ply::read(
   bool withFrameIndex = indexFrame != PCC_UNDEFINED_INDEX;
   bool withLaserAngles = indexLaserAngle != PCC_UNDEFINED_INDEX;
 
-  cloud.addRemoveAttributes(withColors, withReflectances);
+  cloud.addRemoveAttributes(withColors, withReflectances, withLaserAngles);
   if (withFrameIndex)
     cloud.addFrameIndex();
   else
     cloud.removeFrameIndex();
-
-  if (withLaserAngles)
-    cloud.addLaserAngles();
-  else
-    cloud.removeLaserAngles();
 
   cloud.resize(pointCount);
   if (isAscii) {
@@ -759,16 +754,11 @@ bool ply::load(
     bool withFrameIndex = indexFrame != PCC_UNDEFINED_INDEX;
     bool withLaserAngles = indexLaserAngle != PCC_UNDEFINED_INDEX;
 
-    cloud.addRemoveAttributes(withColors, withReflectances);
+    cloud.addRemoveAttributes(withColors, withReflectances, withLaserAngles);
     if (withFrameIndex)
         cloud.addFrameIndex();
     else
         cloud.removeFrameIndex();
-
-    if (withLaserAngles)
-        cloud.addLaserAngles();
-    else
-        cloud.removeLaserAngles();
 
     cloud.resize(pointCount);
     if (isAscii)

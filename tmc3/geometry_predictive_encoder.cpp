@@ -831,7 +831,7 @@ encodePredictiveGeometry(
 
   // storage for reordering the output point cloud
   PCCPointSet3 outCloud;
-  outCloud.addRemoveAttributes(cloud.hasColors(), cloud.hasReflectances());
+  outCloud.addRemoveAttributes(cloud.hasColors(), cloud.hasReflectances(), cloud.hasLaserAngles());
   outCloud.resize(numPoints);
 
   // storage for spherical point co-ordinates determined in angular mode

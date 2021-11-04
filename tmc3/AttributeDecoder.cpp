@@ -401,7 +401,7 @@ AttributeDecoder::decodeReflectancesPred(
       if (predModeEligibleRefl(desc, aps, pointCloud, _lods.indexes, predictor))
         decodePredModeRefl(aps, attValue0, predictor);
 
-      attr_t ring = pointCloud.getLaserAngle(pointIndex);
+      int& ring = pointCloud.getLaserAngle(pointIndex);
       const int64_t quantPredAttValue =
         predictor.predictRing(pointCloud, _lods.indexes);
 
@@ -414,9 +414,8 @@ AttributeDecoder::decodeReflectancesPred(
 
       const int64_t reconstructedQuantAttValue = quantPredAttValue + delta;
       ring =
-        attr_t(PCCClip(reconstructedQuantAttValue, int64_t(0), maxReflectance));
+        int(PCCClip(reconstructedQuantAttValue, int64_t(0), maxReflectance));
     }
-    break;
   default:
     break;
   }
