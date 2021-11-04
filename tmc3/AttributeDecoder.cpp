@@ -416,6 +416,7 @@ AttributeDecoder::decodeReflectancesPred(
       ring =
         int(PCCClip(reconstructedQuantAttValue, int64_t(0), maxReflectance));
     }
+    break;
   default:
     break;
   }
@@ -599,11 +600,28 @@ AttributeDecoder::decodeReflectancesRaht(
 
   const int64_t maxReflectance = (1 << desc.bitdepth) - 1;
   const int64_t minReflectance = 0;
-  for (int n = 0; n < voxelCount; n++) {
-    int64_t val = attributes[attribCount * n];
-    const attr_t reflectance =
-      attr_t(PCCClip(val, minReflectance, maxReflectance));
-    pointCloud.setReflectance(packedVoxel[n].index, reflectance);
+  switch (desc.attributeLabel.known_attribute_label)
+  {
+  case KnownAttributeLabel::kReflectance:
+    // reflectance
+    for (int n = 0; n < voxelCount; n++) {
+      int64_t val = attributes[attribCount * n];
+      const attr_t reflectance =
+        attr_t(PCCClip(val, minReflectance, maxReflectance));
+      pointCloud.setReflectance(packedVoxel[n].index, reflectance);
+    }
+    break;
+  case KnownAttributeLabel::kRingNumber:
+    // ring
+    for (int n = 0; n < voxelCount; n++) {
+      int64_t val = attributes[attribCount * n];
+      const attr_t ring =
+        attr_t(PCCClip(val, minReflectance, maxReflectance));
+      pointCloud.setLaserAngle(packedVoxel[n].index, static_cast<int>(ring));
+    }
+    break;
+  default:
+    break;
   }
 }
 
@@ -832,11 +850,29 @@ AttributeDecoder::decodeReflectancesLift(
       _lods.predictors, startIndex, endIndex, false, reflectances);
   }
   const int64_t maxReflectance = (1 << desc.bitdepth) - 1;
-  for (size_t f = 0; f < pointCount; ++f) {
-    const auto refl =
-      divExp2RoundHalfInf(reflectances[f], kFixedPointAttributeShift);
-    pointCloud.setReflectance(
-      _lods.indexes[f], attr_t(PCCClip(refl, int64_t(0), maxReflectance)));
+
+  switch (desc.attributeLabel.known_attribute_label)
+  {
+  case KnownAttributeLabel::kReflectance:
+    // reflectance
+    for (size_t f = 0; f < pointCount; ++f) {
+      const auto refl =
+        divExp2RoundHalfInf(reflectances[f], kFixedPointAttributeShift);
+      pointCloud.setReflectance(
+        _lods.indexes[f], attr_t(PCCClip(refl, int64_t(0), maxReflectance)));
+    }
+    break;
+  case KnownAttributeLabel::kRingNumber:
+    // reflectance
+    for (size_t f = 0; f < pointCount; ++f) {
+      const auto refl =
+        divExp2RoundHalfInf(reflectances[f], kFixedPointAttributeShift);
+      pointCloud.setLaserAngle(
+        _lods.indexes[f], static_cast<int>(PCCClip(refl, int64_t(0), maxReflectance)));
+    }
+    break;
+  default:
+    break;
   }
 }
 

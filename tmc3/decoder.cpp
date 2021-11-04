@@ -426,6 +426,19 @@ PCCTMC3Decoder3::decodeGeometryBrick(const PayloadBuffer& buf)
       _currentPointCloud.setReflectance(i, defAttrVal);
   }
 
+  if (hasLaserAngles) {
+    auto it = std::find_if(
+      _outCloud.attrDesc.cbegin(), _outCloud.attrDesc.cend(),
+      [](const AttributeDescription& desc) {
+        return desc.attributeLabel == KnownAttributeLabel::kRingNumber;
+      });
+    int defAttrVal = 1 << (it->bitdepth - 1);
+    if (!it->params.attr_default_value.empty())
+      defAttrVal = it->params.attr_default_value[0];
+    for (int i = 0; i < _currentPointCloud.getPointCount(); i++)
+      _currentPointCloud.setLaserAngle(i, defAttrVal);
+  }
+
   // Calculate a tree level at which to stop
   // It should result in at most max points being decoded
   if (_params.decodeMaxPoints && _gps->octree_point_count_list_present_flag) {
