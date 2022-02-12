@@ -168,19 +168,29 @@ include_directories(
 
 
 set(CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE ON) 
-add_library(tmc3 SHARED ${PROJECT_CPP_FILES} ${PROJECT_INC_FILES} ${PROJECT_IN_FILES} ${VERSION_FILE})
+add_library(libtmc3 SHARED ${PROJECT_CPP_FILES} ${PROJECT_INC_FILES} ${PROJECT_IN_FILES} ${VERSION_FILE})
 
-set_target_properties(tmc3 PROPERTIES
+set_target_properties(libtmc3 PROPERTIES
   PUBLIC_HEADER "${PROJECT_INC_FILES}"
 )
 
-install(TARGETS       tmc3
-        EXPORT        tmc3-export
+install(TARGETS       libtmc3
+        EXPORT        libtmc3-export
         LIBRARY       DESTINATION lib
         INCLUDES      DESTINATION include
-        PUBLIC_HEADER DESTINATION include/tmc3)
+        PUBLIC_HEADER DESTINATION include/libtmc3)
 
-install(EXPORT        tmc3-export
-        FILE          tmc3-config.cmake
-        DESTINATION   share/cmake/tmc3
+install(EXPORT        libtmc3-export
+        FILE          libtmc3-config.cmake
+        DESTINATION   share/cmake/libtmc3
         EXPORT_LINK_INTERFACE_LIBRARIES)
+
+
+add_executable (tmc3
+                ${PROJECT_CPP_FILES}
+                ${PROJECT_INC_FILES}
+                ${PROJECT_IN_FILES}
+                ${VERSION_FILE}
+)
+
+install (TARGETS tmc3 DESTINATION bin)

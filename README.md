@@ -89,3 +89,29 @@ mpeg-pcc-tmc13$ make -f $PWD/scripts/Makefile.tmc13-step \
   [md5sum]  Ford_01_vox1mm-0100.ply.bin.decoded.ply.md5
   [metric]  Ford_01_vox1mm-0100.ply.bin.decoded.ply.pc_error <- Ford_01_vox1mm-0100.ply.bin.decoded.ply
 ```
+
+### Docker
+
+* ディレクトリ構成
+```
+$(pwd)
+  |
+  |- decoder.cfg
+  |- encoder.cfg
+  |- sample.ply
+  |- (sample.bin)
+  |- (sample.bin.ply)
+```
+
+* ビルド
+```
+# ubuntu
+docker build -t pcc-tmc13 .
+# alpine
+docker build -t pcc-tmc13:alpine -f Dockerfile.alpine .
+```
+
+* 実行例
+```
+docker run --rm -it -v $(pwd):/tmp pcc-tmc13 -c /tmp/encoder.cfg --uncompressedDataPath=/tmp/sample.ply --compressedStreamPath=/tmp/sample.bin --reconstructedDataPath=/tmp/sample.bin.ply
+```

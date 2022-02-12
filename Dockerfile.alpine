@@ -1,0 +1,21 @@
+FROM alpine:latest AS builder
+
+RUN apk update
+RUN apk add cmake clang make alpine-sdk libressl-dev g++
+COPY . /tmp/
+RUN mkdir -p /tmp/build 
+WORKDIR /tmp/build
+RUN cmake .. && make
+RUN make install
+
+FROM alpine:latest AS exec
+RUN apk update
+RUN apk add libstdc++
+LABEL maintainer="Kento Yamamoto"
+LABEL version="0.1"
+LABEL description="MPEG G-PCCのテストモデルTMC13のイメージ"
+
+COPY --from=builder /usr/local/bin/tmc3 /usr/local/bin/tmc3
+COPY --from=builder /usr/local /usr/local
+ENTRYPOINT ["/usr/local/bin/tmc3"]
+CMD ["--help"]
